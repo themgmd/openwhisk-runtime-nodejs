@@ -129,10 +129,15 @@ function NodeActionService(config) {
             }
 
             // these are defensive checks against the expected interface invariants
-            let msg = req && req.body || {};
-            if (msg.value === null || msg.value === undefined) {
-                msg.value = {};
-            } else if (typeof msg.value !== 'object') {
+            let msg = {
+                headers: req.headers || {},
+                body: req.body || {},
+                query: req.query || {},
+                params: req.params || {}
+            };
+            if (msg.body.value === null || msg.body.value === undefined) {
+                msg.body.value = {};
+            } else if (typeof msg.body.value !== 'object') {
                 let errStr = `Internal system error: the argument must be a dictionary but has type '${typeof msg.value}'.`;
                 console.error('Internal system error:', errStr);
                 return Promise.reject(errorMessage(403, errStr));
@@ -185,15 +190,15 @@ function NodeActionService(config) {
 
     function doRun(msg) {
         // Move per-activation keys to process env. vars with __OW_ (reserved) prefix
-        Object.keys(msg).forEach(k => {
-            if (typeof msg[k] === 'string' && k !== 'value') {
+        Object.keys(msg.body).forEach(k => {
+            if (typeof msg.body[k] === 'string' && k !== 'value') {
                 let envVariable = '__OW_' + k.toUpperCase();
-                process.env[envVariable] = msg[k];
+                process.env[envVariable] = msg.body[k];
             }
         });
 
         return userCodeRunner
-            .run(msg.value)
+            .run(msg)
             .then(result => {
                 if (typeof result !== 'object') {
                     console.error(`Result must be of type object but has type "${typeof result}":`, result);
